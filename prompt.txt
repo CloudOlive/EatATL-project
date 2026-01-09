@@ -1,0 +1,4 @@
+I want to create a 1 pager website called EatATL, this website will be stunning, modern, catchy and intuitive and its main purpose is to display lists of different atlanta restaurants according to their cuisine. 
+The cuisine will be listed as bubbles at the top followed by the restaurants. 
+I would also like to capture their google rating if an API is available and display how they are rated. 
+I do not have software engineering skills so this has to be as simple as possible and understandable for me.
