@@ -6,7 +6,7 @@
     <title>EatATL - Discover Atlanta's Best Restaurants</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -14,318 +14,393 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --bg-color: #FAFAFA;
+            --card-bg: #FFFFFF;
+            --text-primary: #1C1C1C;
+            --text-secondary: #6B6B6B;
+            --accent-primary: #E5533D;
+            --accent-secondary: #F2B705;
+            --border-color: #E5E5E5;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 25%, #FF6B9D 50%, #C44569 75%, #8B4367 100%);
-            background-size: 400% 400%;
-            animation: gradientShift 15s ease infinite;
-            min-height: 100vh;
-            padding: 20px;
-            position: relative;
-            overflow-x: hidden;
-        }
-
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: 0;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1280px;
             margin: 0 auto;
-            position: relative;
-            z-index: 1;
+            padding: 0 24px;
         }
 
-        header {
-            text-align: center;
-            color: white;
-            padding: 60px 20px 50px;
-            margin-bottom: 50px;
-            animation: fadeInDown 0.8s ease-out;
+        .header {
+            padding: 48px 0 32px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 32px;
         }
 
-        @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .logo-section {
+            margin-bottom: 24px;
         }
 
-        h1 {
-            font-family: 'Poppins', sans-serif;
-            font-size: clamp(3rem, 8vw, 5.5rem);
-            font-weight: 900;
-            margin-bottom: 16px;
-            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            letter-spacing: -1px;
-            background: linear-gradient(135deg, #FFFFFF 0%, #FFE5E5 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            line-height: 1.1;
+        .logo {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
         }
 
         .tagline {
-            font-size: clamp(1.1rem, 2vw, 1.5rem);
+            font-size: 16px;
+            color: var(--text-secondary);
             font-weight: 400;
-            opacity: 0.95;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-            letter-spacing: 0.5px;
+        }
+
+        .search-section {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-top: 24px;
+        }
+
+        .search-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 14px 20px 14px 48px;
+            font-size: 16px;
+            font-family: inherit;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--card-bg);
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(229, 83, 61, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            color: var(--text-secondary);
+            pointer-events: none;
+        }
+
+        .filter-button {
+            padding: 14px 20px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .filter-button:hover {
+            border-color: var(--accent-primary);
+            background-color: #FFF5F4;
+        }
+
+        .filters-container {
+            margin-bottom: 32px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) transparent;
+        }
+
+        .filters-container::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .filters-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .filters-container::-webkit-scrollbar-thumb {
+            background-color: var(--border-color);
+            border-radius: 2px;
         }
 
         .filters {
             display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-bottom: 50px;
-            animation: fadeInUp 0.8s ease-out 0.2s both;
+            gap: 8px;
+            padding-bottom: 8px;
+            min-width: fit-content;
         }
 
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .filter-btn {
-            padding: 14px 28px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50px;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            color: white;
-            font-size: 0.95rem;
-            font-weight: 600;
-            font-family: 'Inter', sans-serif;
+        .filter-chip {
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
             cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            position: relative;
-            overflow: hidden;
-            letter-spacing: 0.3px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
         }
 
-        .filter-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
+        .filter-chip:hover {
+            border-color: var(--accent-primary);
+            background-color: #FFF5F4;
+            color: var(--accent-primary);
         }
 
-        .filter-btn:hover::before {
-            left: 100%;
-        }
-
-        .filter-btn:hover {
-            transform: translateY(-3px) scale(1.05);
-            background: rgba(255, 255, 255, 0.25);
-            border-color: rgba(255, 255, 255, 0.5);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-        }
-
-        .filter-btn.active {
-            background: linear-gradient(135deg, #FFD93D 0%, #FF6B6B 100%);
-            border-color: transparent;
+        .filter-chip.active {
+            background-color: var(--accent-primary);
+            border-color: var(--accent-primary);
             color: white;
-            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
-            transform: translateY(-2px);
         }
 
-        .filter-btn.active:hover {
-            transform: translateY(-4px) scale(1.05);
-            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.5);
+        .filter-chip.active:hover {
+            background-color: #D4452E;
+            border-color: #D4452E;
         }
 
         .restaurants-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-            gap: 30px;
-            margin-bottom: 60px;
-            animation: fadeInUp 0.8s ease-out 0.4s both;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 64px;
         }
 
         .restaurant-card {
-            background: rgba(255, 255, 255, 0.98);
-            border-radius: 24px;
-            padding: 32px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.5);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-            position: relative;
+            background-color: var(--card-bg);
+            border-radius: 12px;
             overflow: hidden;
-            backdrop-filter: blur(10px);
-            animation: fadeInUp 0.6s ease-out forwards;
-            opacity: 0;
-        }
-
-        .restaurant-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background: linear-gradient(90deg, #FF6B6B, #FFD93D, #4ECDC4, #45B7D1);
-            transform: scaleX(0);
-            transform-origin: left;
-            transition: transform 0.4s ease;
-        }
-
-        .restaurant-card:hover::before {
-            transform: scaleX(1);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
         }
 
         .restaurant-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.8);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .restaurant-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #F5F5F5 0%, #E8E8E8 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 48px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .restaurant-image::before {
+            content: '🍽️';
+            opacity: 0.3;
+        }
+
+        .card-content {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
 
         .restaurant-name {
-            font-family: 'Poppins', sans-serif;
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: #1a1a1a;
-            margin-bottom: 12px;
-            letter-spacing: -0.5px;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
             line-height: 1.3;
         }
 
         .cuisine-tag {
             display: inline-block;
-            padding: 6px 16px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            margin-bottom: 16px;
-            letter-spacing: 0.3px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
             text-transform: uppercase;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .rating-location {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: auto;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
         }
 
         .rating {
             display: flex;
             align-items: center;
-            gap: 10px;
-            font-size: 1.15rem;
-            color: #FF6B6B;
-            font-weight: 700;
-            margin-bottom: 12px;
+            gap: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
         }
 
-        .stars {
-            font-size: 1.4rem;
-            filter: drop-shadow(0 2px 4px rgba(255, 107, 107, 0.3));
+        .star-icon {
+            width: 16px;
+            height: 16px;
+            color: var(--accent-secondary);
+            fill: var(--accent-secondary);
         }
 
         .location {
-            color: #666;
-            font-size: 0.95rem;
-            font-weight: 500;
-            margin-top: 8px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .location-icon {
+            width: 14px;
+            height: 14px;
+            color: var(--text-secondary);
         }
 
         .no-results {
             text-align: center;
-            color: white;
-            font-size: 1.5rem;
-            font-weight: 500;
-            padding: 80px 20px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 24px;
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            padding: 64px 24px;
+            color: var(--text-secondary);
         }
 
-        footer {
+        .no-results-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .no-results-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .footer {
+            padding: 48px 0;
             text-align: center;
-            color: white;
-            padding: 40px 20px;
-            opacity: 0.9;
-            font-weight: 400;
-            font-size: 0.95rem;
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 14px;
         }
 
-        /* Responsive adjustments */
+        /* Responsive Design */
         @media (max-width: 768px) {
+            .container {
+                padding: 0 16px;
+            }
+
+            .header {
+                padding: 32px 0 24px;
+            }
+
+            .logo {
+                font-size: 28px;
+            }
+
+            .tagline {
+                font-size: 14px;
+            }
+
+            .search-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-button {
+                justify-content: center;
+            }
+
             .restaurants-grid {
                 grid-template-columns: 1fr;
                 gap: 20px;
             }
 
-            .filter-btn {
-                padding: 12px 20px;
-                font-size: 0.85rem;
-            }
-
-            header {
-                padding: 40px 20px 30px;
+            .restaurant-image {
+                height: 180px;
             }
         }
 
-        /* Smooth scroll */
-        html {
-            scroll-behavior: smooth;
-        }
-
-        /* Card entry animation */
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
+        @media (max-width: 480px) {
+            .logo {
+                font-size: 24px;
             }
-            to {
-                opacity: 1;
-                transform: translateY(0);
+
+            .search-input {
+                font-size: 16px;
+                padding: 12px 16px 12px 44px;
+            }
+
+            .filter-chip {
+                padding: 6px 12px;
+                font-size: 13px;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>🍽️ EatATL</h1>
-            <p class="tagline">Discover Atlanta's finest dining experiences</p>
+        <header class="header">
+            <div class="logo-section">
+                <h1 class="logo">EatATL</h1>
+                <p class="tagline">Discover Atlanta's finest dining experiences</p>
+            </div>
+            <div class="search-section">
+                <div class="search-wrapper">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" class="search-input" id="searchInput" placeholder="Search restaurants, cuisines, or neighborhoods">
+                </div>
+                <button class="filter-button" id="filterToggle">
+                    <svg class="filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    Filter
+                </button>
+            </div>
         </header>
 
-        <div class="filters" id="filters"></div>
+        <div class="filters-container" id="filtersContainer">
+            <div class="filters" id="filters"></div>
+        </div>
+
         <div class="restaurants-grid" id="restaurantsGrid"></div>
 
-        <footer>
+        <footer class="footer">
             <p>© 2024 EatATL - Your guide to Atlanta's best restaurants</p>
         </footer>
     </div>
@@ -374,7 +449,6 @@
             { name: "Sri thai", cuisine: "Thai", rating: 4.5, location: "Atlanta", googleUrl: "https://www.google.com/maps/search/Sri+thai+Atlanta" },
             { name: "5Church Midtown", cuisine: "American", rating: 4.5, location: "Midtown", googleUrl: "https://www.google.com/maps/search/5Church+Midtown+Atlanta" },
             { name: "5Church Buckhead", cuisine: "American", rating: 4.5, location: "Buckhead", googleUrl: "https://www.google.com/maps/search/5Church+Buckhead+Atlanta" },
-            { name: "Ecco Midtown", cuisine: "Mediterranean", rating: 4.5, location: "Midtown", googleUrl: "https://www.google.com/maps/search/Ecco+Midtown+Atlanta" },
             { name: "Knife Atl", cuisine: "Steakhouse", rating: 4.6, location: "Atlanta", googleUrl: "https://www.google.com/maps/search/Knife+Atl+Atlanta" },
             { name: "Lyla Lila", cuisine: "Mediterranean", rating: 4.6, location: "Atlanta", googleUrl: "https://www.google.com/maps/search/Lyla+Lila+Atlanta" },
             { name: "Pera Atl", cuisine: "Turkish", rating: 4.5, location: "Atlanta", googleUrl: "https://www.google.com/maps/search/Pera+Atl+Atlanta" },
@@ -402,7 +476,6 @@
             { name: "Pasha Atlanta", cuisine: "Turkish", rating: 4.5, location: "Atlanta", googleUrl: "https://www.google.com/maps/search/Pasha+Atlanta" },
             { name: "La grotta Italiano Atlanta", cuisine: "Italian", rating: 4.7, location: "Atlanta", googleUrl: "https://www.google.com/maps/search/La+grotta+Italiano+Atlanta" },
             { name: "Livingstone restaurant and bar", cuisine: "American", rating: 4.5, location: "Atlanta", googleUrl: "https://www.google.com/maps/search/Livingstone+restaurant+and+bar+Atlanta" },
-            { name: "The Optimist", cuisine: "Seafood", rating: 4.6, location: "Atlanta", googleUrl: "https://www.google.com/maps/search/The+Optimist+Atlanta" },
             { name: "Yalda ATL", cuisine: "Persian", rating: 4.6, location: "Atlanta", googleUrl: "https://www.google.com/maps/search/Yalda+ATL+Atlanta" },
             { name: "C&S oyster bar", cuisine: "Seafood", rating: 4.5, location: "Atlanta", googleUrl: "https://www.google.com/maps/search/C+S+oyster+bar+Atlanta" },
             { name: "Osha Thai Sushi galleria", cuisine: "Thai", rating: 4.5, location: "Atlanta", googleUrl: "https://www.google.com/maps/search/Osha+Thai+Sushi+galleria+Atlanta" },
@@ -415,89 +488,110 @@
         ];
 
         let currentFilter = 'all';
+        let searchQuery = '';
 
         // Get unique cuisines
-        const cuisines = ['all', ...new Set(restaurants.map(r => r.cuisine))];
+        const cuisines = ['all', ...new Set(restaurants.map(r => r.cuisine))].sort();
 
-        // Create filter buttons
+        // Create filter chips
         function createFilters() {
             const filtersDiv = document.getElementById('filters');
             cuisines.forEach(cuisine => {
-                const btn = document.createElement('button');
-                btn.className = 'filter-btn' + (cuisine === 'all' ? ' active' : '');
-                btn.textContent = cuisine === 'all' ? 'All Restaurants' : cuisine;
-                btn.onclick = () => filterRestaurants(cuisine);
-                filtersDiv.appendChild(btn);
+                const chip = document.createElement('button');
+                chip.className = 'filter-chip' + (cuisine === 'all' ? ' active' : '');
+                chip.textContent = cuisine === 'all' ? 'All' : cuisine;
+                chip.onclick = () => filterRestaurants(cuisine);
+                filtersDiv.appendChild(chip);
             });
         }
 
-        // Filter restaurants with smooth transitions
+        // Filter restaurants
         function filterRestaurants(cuisine) {
             currentFilter = cuisine;
             
-            // Update active button with smooth transition
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                const isActive = btn.textContent === (cuisine === 'all' ? 'All Restaurants' : cuisine);
-                btn.classList.remove('active');
-                if (isActive) {
-                    // Add a small delay for smooth visual feedback
-                    setTimeout(() => {
-                        btn.classList.add('active');
-                    }, 50);
+            // Update active chip
+            document.querySelectorAll('.filter-chip').forEach(chip => {
+                chip.classList.remove('active');
+                if (chip.textContent === (cuisine === 'all' ? 'All' : cuisine)) {
+                    chip.classList.add('active');
                 }
             });
             
             displayRestaurants();
         }
 
-        // Display restaurants with smooth animations
+        // Search functionality
+        function handleSearch() {
+            searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+            displayRestaurants();
+        }
+
+        // Display restaurants
         function displayRestaurants() {
             const grid = document.getElementById('restaurantsGrid');
-            const filtered = currentFilter === 'all' 
+            
+            // Filter by cuisine
+            let filtered = currentFilter === 'all' 
                 ? restaurants 
                 : restaurants.filter(r => r.cuisine === currentFilter);
             
+            // Filter by search query
+            if (searchQuery) {
+                filtered = filtered.filter(r => 
+                    r.name.toLowerCase().includes(searchQuery) ||
+                    r.cuisine.toLowerCase().includes(searchQuery) ||
+                    r.location.toLowerCase().includes(searchQuery)
+                );
+            }
+            
             if (filtered.length === 0) {
-                grid.innerHTML = '<div class="no-results">No restaurants found in this category</div>';
+                grid.innerHTML = `
+                    <div class="no-results">
+                        <div class="no-results-title">No restaurants found</div>
+                        <div class="no-results-text">Try adjusting your search or filter</div>
+                    </div>
+                `;
                 return;
             }
             
-            // Clear grid with fade out
-            grid.style.opacity = '0';
-            grid.style.transform = 'translateY(20px)';
-            grid.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-            
-            setTimeout(() => {
-                grid.innerHTML = filtered.map((restaurant, index) => `
-                    <div class="restaurant-card" 
-                         onclick="window.open('${restaurant.googleUrl}', '_blank')"
-                         style="animation-delay: ${index * 0.08}s;">
+            grid.innerHTML = filtered.map(restaurant => `
+                <div class="restaurant-card" onclick="window.open('${restaurant.googleUrl}', '_blank')">
+                    <div class="restaurant-image"></div>
+                    <div class="card-content">
                         <h3 class="restaurant-name">${restaurant.name}</h3>
                         <span class="cuisine-tag">${restaurant.cuisine}</span>
-                        <div class="rating">
-                            <span class="stars">⭐</span>
-                            <span>${restaurant.rating}</span>
-                        </div>
-                        <div class="location">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#666"/>
-                            </svg>
-                            ${restaurant.location}
+                        <div class="rating-location">
+                            <div class="rating">
+                                <svg class="star-icon" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                </svg>
+                                <span>${restaurant.rating}</span>
+                            </div>
+                            <div class="location">
+                                <svg class="location-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                    <circle cx="12" cy="10" r="3"></circle>
+                                </svg>
+                                <span>${restaurant.location}</span>
+                            </div>
                         </div>
                     </div>
-                `).join('');
-                
-                // Fade in grid
-                setTimeout(() => {
-                    grid.style.opacity = '1';
-                    grid.style.transform = 'translateY(0)';
-                }, 50);
-            }, 200);
+                </div>
+            `).join('');
         }
 
         // Initialize
         createFilters();
         displayRestaurants();
+
+        // Search event listener
+        document.getElementById('searchInput').addEventListener('input', handleSearch);
+
+        // Filter toggle (optional - can show/hide filters)
+        document.getElementById('filterToggle').addEventListener('click', () => {
+            const container = document.getElementById('filtersContainer');
+            container.style.display = container.style.display === 'none' ? 'block' : 'none';
+        });
     </script>
 </body>
 </html>
