@@ -212,18 +212,37 @@
             width: 100%;
             height: 200px;
             background: linear-gradient(135deg, #F5F5F5 0%, #E8E8E8 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-secondary);
-            font-size: 48px;
             position: relative;
             overflow: hidden;
         }
 
+        .restaurant-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
         .restaurant-image::before {
             content: '🍽️';
-            opacity: 0.3;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            opacity: 0.2;
+            color: var(--text-secondary);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .restaurant-image:has(img)::before {
+            display: none;
+        }
+
+        .restaurant-image img {
+            position: relative;
+            z-index: 1;
         }
 
         .card-content {
@@ -526,6 +545,25 @@
             displayRestaurants();
         }
 
+        // Generate placeholder image URL based on restaurant name
+        function getPlaceholderImage(restaurant) {
+            // If restaurant has a custom imageUrl, use it
+            if (restaurant.imageUrl) {
+                return restaurant.imageUrl;
+            }
+            
+            // Generate a deterministic seed from restaurant name for consistent images
+            let hash = 0;
+            for (let i = 0; i < restaurant.name.length; i++) {
+                hash = restaurant.name.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const seed = Math.abs(hash) % 1000;
+            
+            // Use Picsum Photos (Lorem Picsum) with seed for consistent random images
+            // Each restaurant gets the same image every time based on its name
+            return `https://picsum.photos/seed/${restaurant.name.replace(/\s+/g, '-')}-${seed}/400/300`;
+        }
+
         // Display restaurants
         function displayRestaurants() {
             const grid = document.getElementById('restaurantsGrid');
@@ -554,9 +592,13 @@
                 return;
             }
             
-            grid.innerHTML = filtered.map(restaurant => `
+            grid.innerHTML = filtered.map(restaurant => {
+                const imageUrl = getPlaceholderImage(restaurant);
+                return `
                 <div class="restaurant-card" onclick="window.open('${restaurant.googleUrl}', '_blank')">
-                    <div class="restaurant-image"></div>
+                    <div class="restaurant-image">
+                        <img src="${imageUrl}" alt="${restaurant.name}" loading="lazy" onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjRjVGNUY1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzlCOUI5QiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPjx0c3BhbiB4PSI1MCUiPj/wn4+NPC90c3Bhbj48L3RleHQ+PC9zdmc+';">
+                    </div>
                     <div class="card-content">
                         <h3 class="restaurant-name">${restaurant.name}</h3>
                         <span class="cuisine-tag">${restaurant.cuisine}</span>
@@ -577,7 +619,8 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         // Initialize
