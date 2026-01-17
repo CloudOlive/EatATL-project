@@ -545,6 +545,9 @@
             displayRestaurants();
         }
 
+        // Cache for food images by cuisine
+        const foodImageCache = {};
+        
         // Generate placeholder image URL based on restaurant name
         function getPlaceholderImage(restaurant) {
             // If restaurant has a custom imageUrl, use it
@@ -557,11 +560,59 @@
             for (let i = 0; i < restaurant.name.length; i++) {
                 hash = restaurant.name.charCodeAt(i) + ((hash << 5) - hash);
             }
-            const seed = Math.abs(hash) % 1000;
+            const seed = Math.abs(hash);
             
-            // Use Picsum Photos (Lorem Picsum) with seed for consistent random images
-            // Each restaurant gets the same image every time based on its name
-            return `https://picsum.photos/seed/${restaurant.name.replace(/\s+/g, '-')}-${seed}/400/300`;
+            // Map cuisine to food image seeds for variety (using reliable placeholder service)
+            // Using Lorem Picsum with cuisine-specific seeds - reliable but not food-specific
+            // Food images will be loaded from Foodish API asynchronously
+            const cuisineSeeds = {
+                'Italian': 1000,
+                'American': 2000,
+                'Thai': 3000,
+                'Japanese': 4000,
+                'Korean': 5000,
+                'Mexican': 6000,
+                'Indian': 7000,
+                'Spanish': 8000,
+                'Seafood': 9000,
+                'Steakhouse': 10000,
+                'Southern': 11000,
+                'Fine Dining': 12000,
+                'Mediterranean': 13000,
+                'Turkish': 14000,
+                'Persian': 15000,
+                'Brazilian': 16000,
+                'French': 17000,
+                'Greek': 18000,
+                'Ethiopian': 19000,
+                'Bar': 20000,
+                'Asian': 21000,
+                'Chinese': 22000,
+                'Vietnamese': 23000
+            };
+            
+            const baseSeed = cuisineSeeds[restaurant.cuisine] || 0;
+            const finalSeed = baseSeed + (seed % 1000);
+            
+            // Try to use cached food image if available
+            const foodCategoryMap = {
+                'Italian': 'pizza', 'American': 'burger', 'Thai': 'biryani', 'Japanese': 'sushi',
+                'Korean': 'biryani', 'Mexican': 'burrito', 'Indian': 'biryani', 'Spanish': 'pasta',
+                'Seafood': 'biryani', 'Steakhouse': 'burger', 'Southern': 'burger', 'Fine Dining': 'pasta',
+                'Mediterranean': 'pasta', 'Turkish': 'biryani', 'Persian': 'biryani', 'Brazilian': 'burger',
+                'French': 'pasta', 'Greek': 'pasta', 'Ethiopian': 'biryani', 'Bar': 'burger',
+                'Asian': 'biryani', 'Chinese': 'biryani', 'Vietnamese': 'biryani'
+            };
+            
+            const category = foodCategoryMap[restaurant.cuisine] || 'biryani';
+            if (foodImageCache[category] && foodImageCache[category].length > 0) {
+                const imageIndex = (seed % foodImageCache[category].length);
+                return foodImageCache[category][imageIndex];
+            }
+            
+            // Fallback to Lorem Picsum - very reliable placeholder service
+            // Food images will replace this via Foodish API async loading
+            return `https://picsum.photos/seed/${finalSeed}/400/300`;
         }
 
         // Display restaurants
@@ -592,12 +643,14 @@
                 return;
             }
             
+            // Render restaurants and load food images asynchronously
             grid.innerHTML = filtered.map(restaurant => {
-                const imageUrl = getPlaceholderImage(restaurant);
+                const placeholderUrl = getPlaceholderImage(restaurant);
+                const cardId = `card-${restaurant.name.replace(/\s+/g, '-').toLowerCase()}`;
                 return `
-                <div class="restaurant-card" onclick="window.open('${restaurant.googleUrl}', '_blank')">
+                <div class="restaurant-card" id="${cardId}" onclick="window.open('${restaurant.googleUrl}', '_blank')">
                     <div class="restaurant-image">
-                        <img src="${imageUrl}" alt="${restaurant.name}" loading="lazy" onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjRjVGNUY1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzlCOUI5QiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPjx0c3BhbiB4PSI1MCUiPj/wn4+NPC90c3Bhbj48L3RleHQ+PC9zdmc+';">
+                        <img src="${placeholderUrl}" alt="${restaurant.name}" loading="lazy" onerror="this.onerror=null; this.src='https://picsum.photos/400/300?random='+Math.random();">
                     </div>
                     <div class="card-content">
                         <h3 class="restaurant-name">${restaurant.name}</h3>
@@ -621,9 +674,79 @@
                 </div>
             `;
             }).join('');
+            
+            // Load food images from Foodish API asynchronously to replace placeholders
+            filtered.forEach(restaurant => {
+                const foodCategoryMap = {
+                    'Italian': 'pizza', 'American': 'burger', 'Thai': 'biryani', 'Japanese': 'sushi',
+                    'Korean': 'biryani', 'Mexican': 'burrito', 'Indian': 'biryani', 'Spanish': 'pasta',
+                    'Seafood': 'biryani', 'Steakhouse': 'burger', 'Southern': 'burger', 'Fine Dining': 'pasta',
+                    'Mediterranean': 'pasta', 'Turkish': 'biryani', 'Persian': 'biryani', 'Brazilian': 'burger',
+                    'French': 'pasta', 'Greek': 'pasta', 'Ethiopian': 'biryani', 'Bar': 'burger',
+                    'Asian': 'biryani', 'Chinese': 'biryani', 'Vietnamese': 'biryani'
+                };
+                
+                const category = foodCategoryMap[restaurant.cuisine] || 'biryani';
+                const cardId = `card-${restaurant.name.replace(/\s+/g, '-').toLowerCase()}`;
+                const card = document.getElementById(cardId);
+                
+                if (card && !restaurant.imageUrl) {
+                    // Try to use cached image first
+                    const cacheKey = `${category}-${restaurant.name}`;
+                    if (foodImageCache[cacheKey]) {
+                        const img = card.querySelector('.restaurant-image img');
+                        if (img) img.src = foodImageCache[cacheKey];
+                        return;
+                    }
+                    
+                    // Fetch food image from Foodish API
+                    fetch(`https://foodish-api.com/api/images/${category}/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data && data.images && data.images.length > 0) {
+                                let hash = 0;
+                                for (let i = 0; i < restaurant.name.length; i++) {
+                                    hash = restaurant.name.charCodeAt(i) + ((hash << 5) - hash);
+                                }
+                                const imageIndex = Math.abs(hash) % data.images.length;
+                                const foodImageUrl = data.images[imageIndex];
+                                const img = card.querySelector('.restaurant-image img');
+                                if (img && foodImageUrl) {
+                                    img.src = foodImageUrl;
+                                    foodImageCache[cacheKey] = foodImageUrl;
+                                }
+                            }
+                        })
+                        .catch(() => {
+                            // Keep placeholder if API fails
+                            console.log(`Failed to load food image for ${restaurant.name}`);
+                        });
+                }
+            });
         }
 
+        // Pre-load food images for faster display
+        function preloadFoodImages() {
+            const categories = ['pizza', 'burger', 'sushi', 'biryani', 'burrito', 'pasta'];
+            categories.forEach(category => {
+                fetch(`https://foodish-api.com/api/images/${category}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && data.images && data.images.length > 0) {
+                            // Cache first few images for this category
+                            if (!foodImageCache[category]) {
+                                foodImageCache[category] = data.images.slice(0, 5);
+                            }
+                        }
+                    })
+                    .catch(() => {
+                        // Silently fail - will use placeholders
+                    });
+            });
+        }
+        
         // Initialize
+        preloadFoodImages();
         createFilters();
         displayRestaurants();
 
