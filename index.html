@@ -245,6 +245,26 @@
             z-index: 1;
         }
 
+        .photo-attribution {
+            position: absolute;
+            left: 10px;
+            bottom: 10px;
+            z-index: 2;
+            max-width: calc(100% - 20px);
+            font-size: 11px;
+            line-height: 1.25;
+            color: rgba(255, 255, 255, 0.92);
+            background: rgba(0, 0, 0, 0.45);
+            padding: 6px 8px;
+            border-radius: 8px;
+            backdrop-filter: blur(6px);
+        }
+
+        .photo-attribution a {
+            color: rgba(255, 255, 255, 0.95);
+            text-decoration: underline;
+        }
+
         .card-content {
             padding: 20px;
             flex: 1;
@@ -420,7 +440,10 @@
         <div class="restaurants-grid" id="restaurantsGrid"></div>
 
         <footer class="footer">
-            <p>© 2024 EatATL - Your guide to Atlanta's best restaurants</p>
+            <p>
+                © 2024 EatATL - Your guide to Atlanta's best restaurants
+                <span id="poweredByGoogle" style="display:none;"> • Powered by Google</span>
+            </p>
         </footer>
     </div>
 
@@ -545,74 +568,259 @@
             displayRestaurants();
         }
 
-        // Cache for food images by cuisine
-        const foodImageCache = {};
-        
-        // Generate placeholder image URL based on restaurant name
+        /**
+         * Google Places API (Legacy) integration (public-site safe):
+         * - Browser calls our Vercel serverless endpoints in /api/places/*
+         * - Serverless functions keep GOOGLE_MAPS_API_KEY secret
+         * - We lazy-load Google data for visible cards only (to control cost)
+         */
+        const GOOGLE_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (client-side cache)
+        const GOOGLE_CONCURRENCY = 3;
+        const googleState = { enabled: true };
+        // When opened as a local file (file://), /api routes won't exist.
+        // Google Places enrichment is meant for Vercel (or `vercel dev`) where /api is available.
+        if (window.location.protocol === 'file:') {
+            googleState.enabled = false;
+        }
+
+        function toBase64Utf8(str) {
+            // btoa expects latin1; this converts UTF-8 safely
+            return btoa(unescape(encodeURIComponent(str)));
+        }
+
+        function getCuisineIcon(cuisine) {
+            const map = {
+                Italian: '🍝',
+                American: '🍔',
+                Thai: '🍜',
+                Japanese: '🍣',
+                Korean: '🥘',
+                Mexican: '🌮',
+                Indian: '🍛',
+                Spanish: '🥘',
+                Seafood: '🦞',
+                Steakhouse: '🥩',
+                Southern: '🍗',
+                'Fine Dining': '🍽️',
+                Mediterranean: '🥙',
+                Turkish: '🥙',
+                Persian: '🍚',
+                Brazilian: '🍖',
+                French: '🥐',
+                Greek: '🥙',
+                Ethiopian: '🥘',
+                Bar: '🍸',
+                Asian: '🥢',
+                Chinese: '🥟',
+                Vietnamese: '🍜',
+            };
+            return map[cuisine] || '🍽️';
+        }
+
+        function buildSvgFoodPlaceholder(restaurant) {
+            const icon = getCuisineIcon(restaurant.cuisine);
+            const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F5F5F5"/>
+      <stop offset="1" stop-color="#EDEDED"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#g)"/>
+  <text x="50%" y="48%" font-size="88" text-anchor="middle" dominant-baseline="middle" opacity="0.35">${icon}</text>
+  <text x="50%" y="62%" font-size="18" text-anchor="middle" fill="#6B6B6B" opacity="0.9">Loading photo…</text>
+</svg>`.trim();
+            return `data:image/svg+xml;base64,${toBase64Utf8(svg)}`;
+        }
+
+        // Placeholder image URL used until Google photo arrives
         function getPlaceholderImage(restaurant) {
-            // If restaurant has a custom imageUrl, use it
-            if (restaurant.imageUrl) {
-                return restaurant.imageUrl;
+            return restaurant.imageUrl || buildSvgFoodPlaceholder(restaurant);
+        }
+
+        function safeLocalStorageGet(key) {
+            try {
+                const raw = localStorage.getItem(key);
+                if (!raw) return null;
+                return JSON.parse(raw);
+            } catch {
+                return null;
             }
-            
-            // Generate a deterministic seed from restaurant name for consistent images
-            let hash = 0;
-            for (let i = 0; i < restaurant.name.length; i++) {
-                hash = restaurant.name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        function safeLocalStorageSet(key, value) {
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+            } catch {
+                // ignore quota/private-mode errors
             }
-            const seed = Math.abs(hash);
-            
-            // Map cuisine to food image seeds for variety (using reliable placeholder service)
-            // Using Lorem Picsum with cuisine-specific seeds - reliable but not food-specific
-            // Food images will be loaded from Foodish API asynchronously
-            const cuisineSeeds = {
-                'Italian': 1000,
-                'American': 2000,
-                'Thai': 3000,
-                'Japanese': 4000,
-                'Korean': 5000,
-                'Mexican': 6000,
-                'Indian': 7000,
-                'Spanish': 8000,
-                'Seafood': 9000,
-                'Steakhouse': 10000,
-                'Southern': 11000,
-                'Fine Dining': 12000,
-                'Mediterranean': 13000,
-                'Turkish': 14000,
-                'Persian': 15000,
-                'Brazilian': 16000,
-                'French': 17000,
-                'Greek': 18000,
-                'Ethiopian': 19000,
-                'Bar': 20000,
-                'Asian': 21000,
-                'Chinese': 22000,
-                'Vietnamese': 23000
+        }
+
+        function isFresh(ts, ttlMs) {
+            return typeof ts === 'number' && (Date.now() - ts) < ttlMs;
+        }
+
+        function buildGoogleQuery(restaurant) {
+            // Works best when you include city + state.
+            // Example: "Boccalupo, Atlanta GA"
+            return `${restaurant.name}, Atlanta GA`;
+        }
+
+        function createLimiter(maxConcurrent) {
+            let active = 0;
+            const queue = [];
+
+            const runNext = () => {
+                if (active >= maxConcurrent) return;
+                const next = queue.shift();
+                if (!next) return;
+                active += 1;
+                next.fn()
+                    .then(next.resolve)
+                    .catch(next.reject)
+                    .finally(() => {
+                        active -= 1;
+                        runNext();
+                    });
             };
-            
-            const baseSeed = cuisineSeeds[restaurant.cuisine] || 0;
-            const finalSeed = baseSeed + (seed % 1000);
-            
-            // Try to use cached food image if available
-            const foodCategoryMap = {
-                'Italian': 'pizza', 'American': 'burger', 'Thai': 'biryani', 'Japanese': 'sushi',
-                'Korean': 'biryani', 'Mexican': 'burrito', 'Indian': 'biryani', 'Spanish': 'pasta',
-                'Seafood': 'biryani', 'Steakhouse': 'burger', 'Southern': 'burger', 'Fine Dining': 'pasta',
-                'Mediterranean': 'pasta', 'Turkish': 'biryani', 'Persian': 'biryani', 'Brazilian': 'burger',
-                'French': 'pasta', 'Greek': 'pasta', 'Ethiopian': 'biryani', 'Bar': 'burger',
-                'Asian': 'biryani', 'Chinese': 'biryani', 'Vietnamese': 'biryani'
-            };
-            
-            const category = foodCategoryMap[restaurant.cuisine] || 'biryani';
-            if (foodImageCache[category] && foodImageCache[category].length > 0) {
-                const imageIndex = (seed % foodImageCache[category].length);
-                return foodImageCache[category][imageIndex];
+
+            return (fn) =>
+                new Promise((resolve, reject) => {
+                    queue.push({ fn, resolve, reject });
+                    runNext();
+                });
+        }
+
+        function sanitizeHtmlAttributions(htmlAttributions) {
+            // Google returns HTML strings like: <a href="...">Author</a>
+            // We keep ONLY <a> tags and strip everything else.
+            if (!Array.isArray(htmlAttributions)) return '';
+            const container = document.createElement('div');
+
+            htmlAttributions.forEach((html) => {
+                const tmp = document.createElement('div');
+                tmp.innerHTML = String(html);
+                tmp.querySelectorAll('a').forEach((a) => {
+                    const href = a.getAttribute('href') || '';
+                    const text = (a.textContent || '').trim();
+                    if (!href || !text) return;
+                    const safeA = document.createElement('a');
+                    safeA.href = href;
+                    safeA.textContent = text;
+                    safeA.target = '_blank';
+                    safeA.rel = 'noopener noreferrer';
+                    container.appendChild(safeA);
+                    container.appendChild(document.createTextNode(' '));
+                });
+            });
+
+            return container.innerHTML.trim();
+        }
+
+        async function apiGetJson(url) {
+            const resp = await fetch(url);
+            const data = await resp.json().catch(() => null);
+            if (!resp.ok) {
+                const message = data?.message || data?.error || `Request failed (${resp.status})`;
+                const err = new Error(message);
+                err.status = resp.status;
+                err.body = data;
+                throw err;
             }
-            
-            // Fallback to Lorem Picsum - very reliable placeholder service
-            // Food images will replace this via Foodish API async loading
-            return `https://picsum.photos/seed/${finalSeed}/400/300`;
+            return data;
+        }
+
+        async function googleFindPlaceIdForRestaurant(restaurant) {
+            if (!googleState.enabled) return null;
+
+            const query = buildGoogleQuery(restaurant);
+            const cacheKey = `eatATL_google_find:${query.toLowerCase()}`;
+            const cached = safeLocalStorageGet(cacheKey);
+            if (cached?.placeId && isFresh(cached.ts, GOOGLE_CACHE_TTL_MS)) {
+                return cached.placeId;
+            }
+
+            const data = await apiGetJson(`/api/places/find?query=${encodeURIComponent(query)}`);
+            const placeId = data?.place?.placeId || null;
+            if (placeId) {
+                safeLocalStorageSet(cacheKey, { placeId, ts: Date.now() });
+            }
+            return placeId;
+        }
+
+        async function googleFetchPlaceDetails(placeId) {
+            if (!googleState.enabled) return null;
+
+            const cacheKey = `eatATL_google_details:${placeId}`;
+            const cached = safeLocalStorageGet(cacheKey);
+            if (cached?.place && isFresh(cached.ts, GOOGLE_CACHE_TTL_MS)) {
+                return cached.place;
+            }
+
+            const data = await apiGetJson(`/api/places/details?placeId=${encodeURIComponent(placeId)}`);
+            const place = data?.place || null;
+            if (place) {
+                safeLocalStorageSet(cacheKey, { place, ts: Date.now() });
+            }
+            return place;
+        }
+
+        function setPoweredByGoogleVisible() {
+            const el = document.getElementById('poweredByGoogle');
+            if (el) el.style.display = 'inline';
+        }
+
+        async function enrichRestaurantCardFromGoogle(restaurant, cardEl) {
+            if (!googleState.enabled) return;
+            if (!cardEl || cardEl.dataset.googleEnriched === '1') return;
+
+            // If the restaurant already has an imageUrl set (local/curated), we still update rating.
+            let placeId = restaurant.placeId || null;
+            if (!placeId) {
+                try {
+                    placeId = await googleFindPlaceIdForRestaurant(restaurant);
+                } catch (e) {
+                    // If backend is not configured (no key), stop trying.
+                    if (e.status === 500) googleState.enabled = false;
+                    return;
+                }
+            }
+            if (!placeId) return;
+
+            let details;
+            try {
+                details = await googleFetchPlaceDetails(placeId);
+            } catch (e) {
+                if (e.status === 500) googleState.enabled = false;
+                return;
+            }
+            if (!details) return;
+
+            // Update rating
+            const ratingEl = cardEl.querySelector('[data-rating]');
+            if (ratingEl && typeof details.rating === 'number') {
+                ratingEl.textContent = details.rating.toFixed(1);
+            }
+
+            // Update photo + attribution (only if we don't already have a curated local imageUrl)
+            const firstPhoto = Array.isArray(details.photos) ? details.photos[0] : null;
+            if (firstPhoto?.photoReference && !restaurant.imageUrl) {
+                const imgEl = cardEl.querySelector('.restaurant-image img');
+                if (imgEl) {
+                    imgEl.src = `/api/places/photo?ref=${encodeURIComponent(firstPhoto.photoReference)}&maxwidth=800`;
+                }
+
+                const attributionHtml = sanitizeHtmlAttributions(firstPhoto.htmlAttributions);
+                const attributionEl = cardEl.querySelector('[data-photo-attribution]');
+                if (attributionEl && attributionHtml) {
+                    attributionEl.innerHTML = attributionHtml;
+                    attributionEl.style.display = 'block';
+                    setPoweredByGoogleVisible();
+                }
+            }
+
+            cardEl.dataset.googleEnriched = '1';
         }
 
         // Display restaurants
@@ -643,14 +851,15 @@
                 return;
             }
             
-            // Render restaurants and load food images asynchronously
+            // Render restaurants
             grid.innerHTML = filtered.map(restaurant => {
                 const placeholderUrl = getPlaceholderImage(restaurant);
                 const cardId = `card-${restaurant.name.replace(/\s+/g, '-').toLowerCase()}`;
                 return `
                 <div class="restaurant-card" id="${cardId}" onclick="window.open('${restaurant.googleUrl}', '_blank')">
                     <div class="restaurant-image">
-                        <img src="${placeholderUrl}" alt="${restaurant.name}" loading="lazy" onerror="this.onerror=null; this.src='https://picsum.photos/400/300?random='+Math.random();">
+                        <img src="${placeholderUrl}" alt="${restaurant.name}" loading="lazy" onerror="this.onerror=null; this.src='${buildSvgFoodPlaceholder(restaurant)}';">
+                        <div class="photo-attribution" data-photo-attribution style="display:none;"></div>
                     </div>
                     <div class="card-content">
                         <h3 class="restaurant-name">${restaurant.name}</h3>
@@ -660,7 +869,7 @@
                                 <svg class="star-icon" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                                 </svg>
-                                <span>${restaurant.rating}</span>
+                                <span data-rating>${restaurant.rating}</span>
                             </div>
                             <div class="location">
                                 <svg class="location-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -674,79 +883,31 @@
                 </div>
             `;
             }).join('');
-            
-            // Load food images from Foodish API asynchronously to replace placeholders
-            filtered.forEach(restaurant => {
-                const foodCategoryMap = {
-                    'Italian': 'pizza', 'American': 'burger', 'Thai': 'biryani', 'Japanese': 'sushi',
-                    'Korean': 'biryani', 'Mexican': 'burrito', 'Indian': 'biryani', 'Spanish': 'pasta',
-                    'Seafood': 'biryani', 'Steakhouse': 'burger', 'Southern': 'burger', 'Fine Dining': 'pasta',
-                    'Mediterranean': 'pasta', 'Turkish': 'biryani', 'Persian': 'biryani', 'Brazilian': 'burger',
-                    'French': 'pasta', 'Greek': 'pasta', 'Ethiopian': 'biryani', 'Bar': 'burger',
-                    'Asian': 'biryani', 'Chinese': 'biryani', 'Vietnamese': 'biryani'
-                };
-                
-                const category = foodCategoryMap[restaurant.cuisine] || 'biryani';
+
+            // Lazy-load Google rating/photo for visible cards (controls API usage)
+            const limiter = createLimiter(GOOGLE_CONCURRENCY);
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (!entry.isIntersecting) return;
+                    observer.unobserve(entry.target);
+                    const cardEl = entry.target;
+                    const name = cardEl.getAttribute('data-name');
+                    const restaurant = filtered.find((r) => r.name === name);
+                    if (!restaurant) return;
+                    limiter(() => enrichRestaurantCardFromGoogle(restaurant, cardEl)).catch(() => {});
+                });
+            }, { rootMargin: '200px 0px' });
+
+            filtered.forEach((restaurant) => {
                 const cardId = `card-${restaurant.name.replace(/\s+/g, '-').toLowerCase()}`;
                 const card = document.getElementById(cardId);
-                
-                if (card && !restaurant.imageUrl) {
-                    // Try to use cached image first
-                    const cacheKey = `${category}-${restaurant.name}`;
-                    if (foodImageCache[cacheKey]) {
-                        const img = card.querySelector('.restaurant-image img');
-                        if (img) img.src = foodImageCache[cacheKey];
-                        return;
-                    }
-                    
-                    // Fetch food image from Foodish API
-                    fetch(`https://foodish-api.com/api/images/${category}/`)
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data && data.images && data.images.length > 0) {
-                                let hash = 0;
-                                for (let i = 0; i < restaurant.name.length; i++) {
-                                    hash = restaurant.name.charCodeAt(i) + ((hash << 5) - hash);
-                                }
-                                const imageIndex = Math.abs(hash) % data.images.length;
-                                const foodImageUrl = data.images[imageIndex];
-                                const img = card.querySelector('.restaurant-image img');
-                                if (img && foodImageUrl) {
-                                    img.src = foodImageUrl;
-                                    foodImageCache[cacheKey] = foodImageUrl;
-                                }
-                            }
-                        })
-                        .catch(() => {
-                            // Keep placeholder if API fails
-                            console.log(`Failed to load food image for ${restaurant.name}`);
-                        });
-                }
+                if (!card) return;
+                card.setAttribute('data-name', restaurant.name);
+                observer.observe(card);
             });
         }
 
-        // Pre-load food images for faster display
-        function preloadFoodImages() {
-            const categories = ['pizza', 'burger', 'sushi', 'biryani', 'burrito', 'pasta'];
-            categories.forEach(category => {
-                fetch(`https://foodish-api.com/api/images/${category}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data && data.images && data.images.length > 0) {
-                            // Cache first few images for this category
-                            if (!foodImageCache[category]) {
-                                foodImageCache[category] = data.images.slice(0, 5);
-                            }
-                        }
-                    })
-                    .catch(() => {
-                        // Silently fail - will use placeholders
-                    });
-            });
-        }
-        
         // Initialize
-        preloadFoodImages();
         createFilters();
         displayRestaurants();
 

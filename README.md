@@ -20,7 +20,8 @@ A modern, interactive web application for discovering Atlanta's finest dining ex
 
 ### Prerequisites
 
-No dependencies required! This is a pure HTML, CSS, and JavaScript application.
+- **Static mode (no Google API)**: no dependencies required; open `index.html`.
+- **Google ratings/photos (public website)**: deploy on Vercel (includes serverless endpoints that keep your Google API key secret).
 
 ### Installation
 
@@ -37,6 +38,64 @@ For the best development experience with live reload:
 1. Install [Live Server extension](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) in VS Code
 2. Right-click on `index.html`
 3. Select "Open with Live Server"
+
+## ⭐ Google ratings + photos (Legacy Places API) on Vercel
+
+This project includes Vercel serverless endpoints under `api/places/*` that proxy Google Places requests so your **API key is never exposed in the browser**.
+
+### Step 1: Create a Google Maps Platform API key
+
+1. Create a project in Google Cloud Console
+2. Enable **Places API**
+3. Attach **billing** (required for Places)
+4. Create an **API key**
+5. In API key settings:
+   - **API restrictions**: restrict to **Places API**
+   - **Application restrictions**: keep the key **server-side only** (do not put it in frontend code)
+
+### Step 2: Add the key to Vercel
+
+In your Vercel project:
+- Go to **Project Settings → Environment Variables**
+- Add:
+  - **Name**: `GOOGLE_MAPS_API_KEY`
+  - **Value**: your API key
+
+You can use the included `env.example` as a reference.
+
+### Step 3: Deploy to Vercel
+
+1. Import this repo into Vercel
+2. Deploy
+
+### Local development (so `/api` works)
+
+If you want to test Google integration locally, run a local Vercel dev server (instead of opening `index.html` via `file://`):
+
+```bash
+npm i -g vercel
+vercel dev
+```
+
+Then open the local URL Vercel prints (usually `http://localhost:3000`).
+
+### What happens in the UI
+
+- Cards render immediately using a lightweight food-themed SVG placeholder.
+- When a card scrolls into view, the frontend calls:
+  - `GET /api/places/find` (to resolve `place_id`)
+  - `GET /api/places/details` (to fetch rating + photo metadata)
+  - `GET /api/places/photo` (streams the image bytes)
+- The UI updates:
+  - **rating** is replaced with Google’s rating
+  - **photo** is replaced with a Google Place photo
+  - **photo attribution** is shown on the image (required)
+  - “Powered by Google” appears in the footer (required when showing Places content without a map)
+
+### Notes (important)
+
+- **Cost/quota**: Each visitor can trigger API calls as they scroll; the app limits concurrency and caches results in `localStorage` for 7 days.
+- **Compliance**: Display the returned photo attributions (the app does). Review Google Maps Platform terms before changing caching behavior.
 
 ## 📖 Usage
 
@@ -66,6 +125,8 @@ For the best development experience with live reload:
 EatATL project/
 │
 ├── index.html          # Main application file (HTML, CSS, JavaScript)
+├── api/places/         # Vercel serverless endpoints (Google Places proxy)
+├── env.example         # Example env var names (do NOT commit real keys)
 └── README.md           # Project documentation
 ```
 
