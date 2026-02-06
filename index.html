@@ -221,48 +221,24 @@
             height: 100%;
             object-fit: cover;
             display: block;
-        }
-
-        .restaurant-image::before {
-            content: '🍽️';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 48px;
-            opacity: 0.2;
-            color: var(--text-secondary);
-            z-index: 0;
-            pointer-events: none;
-        }
-
-        .restaurant-image:has(img)::before {
-            display: none;
-        }
-
-        .restaurant-image img {
             position: relative;
             z-index: 1;
         }
 
-        .photo-attribution {
+        .restaurant-image .image-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #F0F0F0 0%, #E0E0E0 100%);
+            font-size: 72px;
+            opacity: 0.85;
             position: absolute;
-            left: 10px;
-            bottom: 10px;
-            z-index: 2;
-            max-width: calc(100% - 20px);
-            font-size: 11px;
-            line-height: 1.25;
-            color: rgba(255, 255, 255, 0.92);
-            background: rgba(0, 0, 0, 0.45);
-            padding: 6px 8px;
-            border-radius: 8px;
-            backdrop-filter: blur(6px);
-        }
-
-        .photo-attribution a {
-            color: rgba(255, 255, 255, 0.95);
-            text-decoration: underline;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
         }
 
         .card-content {
@@ -450,7 +426,7 @@
     <script>
         // Restaurant data - YOU CAN EASILY ADD MORE RESTAURANTS HERE
         const restaurants = [
-            { name: "Boccalupo", cuisine: "Italian", rating: 4.6, location: "Westside", googleUrl: "https://www.google.com/maps/search/Boccalupo+Atlanta", imageUrl: "assets/boccalupo.png" },
+            { name: "Boccalupo", cuisine: "Italian", rating: 4.6, location: "Westside", googleUrl: "https://www.google.com/maps/search/Boccalupo+Atlanta" },
             { name: "Staplehouse", cuisine: "American", rating: 4.8, location: "Old Fourth Ward", googleUrl: "https://www.google.com/maps/search/Staplehouse+Atlanta" },
             { name: "Gunshow", cuisine: "American", rating: 4.5, location: "Glenwood Park", googleUrl: "https://www.google.com/maps/search/Gunshow+Atlanta" },
             { name: "Canoe", cuisine: "American", rating: 4.6, location: "Vinings", googleUrl: "https://www.google.com/maps/search/Canoe+Atlanta" },
@@ -583,11 +559,6 @@
             googleState.enabled = false;
         }
 
-        function toBase64Utf8(str) {
-            // btoa expects latin1; this converts UTF-8 safely
-            return btoa(unescape(encodeURIComponent(str)));
-        }
-
         function getCuisineIcon(cuisine) {
             const map = {
                 Italian: '🍝',
@@ -617,26 +588,9 @@
             return map[cuisine] || '🍽️';
         }
 
-        function buildSvgFoodPlaceholder(restaurant) {
-            const icon = getCuisineIcon(restaurant.cuisine);
-            const svg = `
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#F5F5F5"/>
-      <stop offset="1" stop-color="#EDEDED"/>
-    </linearGradient>
-  </defs>
-  <rect width="800" height="600" fill="url(#g)"/>
-  <text x="50%" y="48%" font-size="88" text-anchor="middle" dominant-baseline="middle" opacity="0.35">${icon}</text>
-  <text x="50%" y="62%" font-size="18" text-anchor="middle" fill="#6B6B6B" opacity="0.9">Loading photo…</text>
-</svg>`.trim();
-            return `data:image/svg+xml;base64,${toBase64Utf8(svg)}`;
-        }
-
-        // Placeholder image URL used until Google photo arrives
-        function getPlaceholderImage(restaurant) {
-            return restaurant.imageUrl || buildSvgFoodPlaceholder(restaurant);
+        // All images use cuisine-themed placeholder (div-based, works with file://)
+        function getPlaceholderIcon(restaurant) {
+            return getCuisineIcon(restaurant.cuisine);
         }
 
         function safeLocalStorageGet(key) {
@@ -690,32 +644,6 @@
                     queue.push({ fn, resolve, reject });
                     runNext();
                 });
-        }
-
-        function sanitizeHtmlAttributions(htmlAttributions) {
-            // Google returns HTML strings like: <a href="...">Author</a>
-            // We keep ONLY <a> tags and strip everything else.
-            if (!Array.isArray(htmlAttributions)) return '';
-            const container = document.createElement('div');
-
-            htmlAttributions.forEach((html) => {
-                const tmp = document.createElement('div');
-                tmp.innerHTML = String(html);
-                tmp.querySelectorAll('a').forEach((a) => {
-                    const href = a.getAttribute('href') || '';
-                    const text = (a.textContent || '').trim();
-                    if (!href || !text) return;
-                    const safeA = document.createElement('a');
-                    safeA.href = href;
-                    safeA.textContent = text;
-                    safeA.target = '_blank';
-                    safeA.rel = 'noopener noreferrer';
-                    container.appendChild(safeA);
-                    container.appendChild(document.createTextNode(' '));
-                });
-            });
-
-            return container.innerHTML.trim();
         }
 
         async function apiGetJson(url) {
@@ -797,27 +725,11 @@
             }
             if (!details) return;
 
-            // Update rating
+            // Update rating only (images stay as placeholders)
             const ratingEl = cardEl.querySelector('[data-rating]');
             if (ratingEl && typeof details.rating === 'number') {
                 ratingEl.textContent = details.rating.toFixed(1);
-            }
-
-            // Update photo + attribution (only if we don't already have a curated local imageUrl)
-            const firstPhoto = Array.isArray(details.photos) ? details.photos[0] : null;
-            if (firstPhoto?.photoReference && !restaurant.imageUrl) {
-                const imgEl = cardEl.querySelector('.restaurant-image img');
-                if (imgEl) {
-                    imgEl.src = `/api/places/photo?ref=${encodeURIComponent(firstPhoto.photoReference)}&maxwidth=800`;
-                }
-
-                const attributionHtml = sanitizeHtmlAttributions(firstPhoto.htmlAttributions);
-                const attributionEl = cardEl.querySelector('[data-photo-attribution]');
-                if (attributionEl && attributionHtml) {
-                    attributionEl.innerHTML = attributionHtml;
-                    attributionEl.style.display = 'block';
-                    setPoweredByGoogleVisible();
-                }
+                setPoweredByGoogleVisible();
             }
 
             cardEl.dataset.googleEnriched = '1';
@@ -851,15 +763,14 @@
                 return;
             }
             
-            // Render restaurants
+            // Render restaurants (div-based placeholders work with file://)
             grid.innerHTML = filtered.map(restaurant => {
-                const placeholderUrl = getPlaceholderImage(restaurant);
+                const icon = getPlaceholderIcon(restaurant);
                 const cardId = `card-${restaurant.name.replace(/\s+/g, '-').toLowerCase()}`;
                 return `
                 <div class="restaurant-card" id="${cardId}" onclick="window.open('${restaurant.googleUrl}', '_blank')">
                     <div class="restaurant-image">
-                        <img src="${placeholderUrl}" alt="${restaurant.name}" loading="lazy" onerror="this.onerror=null; this.src='${buildSvgFoodPlaceholder(restaurant)}';">
-                        <div class="photo-attribution" data-photo-attribution style="display:none;"></div>
+                        <div class="image-placeholder">${icon}</div>
                     </div>
                     <div class="card-content">
                         <h3 class="restaurant-name">${restaurant.name}</h3>
